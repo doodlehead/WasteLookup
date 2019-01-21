@@ -1,8 +1,6 @@
 import React from "react";
 import Cookie from 'js-cookie';
-//import Cookie from '../js.cookie.js';
-//import PropTypes from "prop-types";
-//import ReactDOM from 'react-dom';
+import update from 'immutability-helper';
 
 class Lookup extends React.Component {
   constructor(props) {
@@ -12,39 +10,48 @@ class Lookup extends React.Component {
       isLoaded: false,
       items: [],
       filtered: [],
-      favorites: []
+      favoritesIds: [],
+      favoriteItems: []
     };
     console.log(React.version);
   }
 
   componentDidMount() {
+    //Get favorites from a cookie if it exists
+    let favs = Cookie.get('favorites');
+    //No cookies
+    if(favs === undefined) {
+      Cookie.set('favorites', '[]');
+      favs = Cookie.get('favorites');
+    }
+    let cookieFavs = JSON.parse(favs);
     //Fetch the waste lookup data with a GET request
+
     fetch('https://secure.toronto.ca/cc_sr_v1/data/swm_waste_wizard_APR?limit=1000')
     .then(function(response) {
       return response.json();
     })
     .then( (myJson) => {
+      for (let i = 0; i < myJson.length; i++) {
+        //Add key/value some custom key/value pairs
+        myJson[i].identifier = i;
+        myJson[i].favorite = cookieFavs.includes(i);
+      }
+      //Get the actual item associated with the id
+      let favItems = [];
+      for (let i = 0; i < cookieFavs.length; i++) {
+        favItems.push(myJson[cookieFavs[i]]);
+      }
+
       this.setState({
         isLoaded: true,
-        items: myJson
+        items: myJson,
+        favoritesIds: cookieFavs,
+        favoriteItems: favItems
       });
 
       console.log(myJson);
 
-      Cookie.remove('favorites');
-
-      let str = JSON.stringify(myJson).substring(0,500);
-      Cookie.set('favorites', str);
-
-      let x = Cookie.get('favorites');
-      //myJson is an array of JSON objects
-
-      // for (let i = 0; i < myJson.length; i++) {
-      //   let entry = myJson[i];
-
-      //   console.log(entry.body);
-      // }
-      
     });
     
   }
@@ -72,26 +79,57 @@ class Lookup extends React.Component {
     
   }
 
+  toggleFavorite = (identifier) => {
+    //Update cookie
+    let favs = JSON.parse(Cookie.get('favorites'));
+    if(favs.includes(identifier)) {
+      console.log("remove from cookie");
+      //Remove it from cookie
+      favs.splice(favs.indexOf(identifier), 1);
+      Cookie.set('favorites', JSON.stringify(favs));
+    }
+    else {
+      //Add identifier to cookie
+      console.log("add to cookie");
+      favs.push(identifier);
+      Cookie.set('favorites', JSON.stringify(favs));
+    }
+
+    let ids = JSON.parse(Cookie.get('favorites'));
+    let favItems = [];
+    for (let i = 0; i < ids.length; i++) {
+      favItems.push(this.state.items[ids[i]]);
+    }
+
+    this.setState((state) => {
+      return {
+        favoritesIds: ids,
+        favoriteItems: favItems
+      }
+    });
+  }
+
   render() {
+    console.log("render");
     return (
       <React.Fragment>
-        <p>This is the lookup component</p>
         <input id="search" type="text" className="input" placeholder="Search..." onKeyPress={this.handleKeyPress} />
 
-        <h1>Search results here</h1>
-        <RenderTableRows contents={this.state.filtered}/>
+        <RenderTableRows contents={this.state.filtered} favToggle={this.toggleFavorite}/>
 
         <h1>Favorites</h1>
-        <div>Fav results here</div>
+        <RenderTableRows contents={this.state.favoriteItems} favToggle={this.toggleFavorite}/>
+        
       </React.Fragment>
     );
   }
+  
 }
 
 function RenderTableRows(props) {
   let tableRows = [];
   for (let i = 0; i < props.contents.length; i++) {
-    tableRows.push(<RenderSingleRow entry={props.contents[i]}/>);
+    tableRows.push(<RenderSingleRow entry={props.contents[i]} favToggle={props.favToggle}/>);
   }
   return (
     <table class="table table-borderless">
@@ -108,23 +146,16 @@ function RenderSingleRow(props) {
 
   return ( 
     <tr>
+      <td ><i class="fas fa-star" onClick={() => {toggleFavorite(props.entry.identifier, props.favToggle)}} fav={props.entry.favorite == true ? "true" : undefined}></i></td>
       <td>{props.entry.title}</td>
       <td dangerouslySetInnerHTML={{__html: lookupData.documentElement.innerText}} />
-      {/* <td>{<ParseHTML text={props.entry.body}/>}</td> */}
     </tr>
   );
 }
 
-function ParseHTML(props) {
-  //Convert the html body into an actual element
-  let parser = new DOMParser();
-  let lookupData = parser.parseFromString(props.text, "text/html");
-
-  // let t = document.createElement('template');
-  // t.innerHTML = lookupData.documentElement.innerText;
-  // return t.content.cloneNode(true);
-  return lookupData.documentElement.innerText;
-
+function toggleFavorite(identifier, toggleFunc) {
+  console.log("toggle " + identifier );
+  toggleFunc(identifier);
 }
 
 export default Lookup
