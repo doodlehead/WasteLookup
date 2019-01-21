@@ -51,10 +51,10 @@ class Lookup extends React.Component {
     
   }
 
-  searchList(word) {
+  searchList = (word) => {
     let found = [];
-    for (let i = 0; i < myJson.length; i++) {
-        let entry = myJson[i];
+    for (let i = 0; i < this.state.items.length; i++) {
+        let entry = this.state.items[i];
         if(entry.keywords.includes(word)) {
           found.push(entry);
         }
@@ -64,15 +64,26 @@ class Lookup extends React.Component {
 
   handleKeyPress = (e) => {
     if (e.key === 'Enter') {
-      console.log('Enter key pressed');
+      let searchTerm = document.getElementById("search").value;
+      this.setState((state) => ({
+        filtered: this.searchList(searchTerm)
+      }), () => {
+        console.log(this.state.filtered);
+      });
     }
+    
   }
 
   render() {
     return (
       <React.Fragment>
         <p>This is the lookup component</p>
-        <input type="text" className="input" placeholder="Search..." onKeyPress={this.handleKeyPress} />
+        <input id="search" type="text" className="input" placeholder="Search..." onKeyPress={this.handleKeyPress} />
+
+        <h1>Search results here</h1>
+
+        <h1>Favorites</h1>
+        <div>Fav results here</div>
       </React.Fragment>
     );
   }
