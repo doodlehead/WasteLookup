@@ -44,9 +44,7 @@ class Lookup extends React.Component {
 
       //   console.log(entry.body);
       // }
-      //Convert the html body into an actual element
-      //let lookupData = new DOMParser().parseFromString(bodyText, "text/html");
-      //document.getElementById("stuff").innerHTML = lookupData.documentElement.textContent;
+      
     });
     
   }
@@ -81,12 +79,52 @@ class Lookup extends React.Component {
         <input id="search" type="text" className="input" placeholder="Search..." onKeyPress={this.handleKeyPress} />
 
         <h1>Search results here</h1>
+        <RenderTableRows contents={this.state.filtered}/>
 
         <h1>Favorites</h1>
         <div>Fav results here</div>
       </React.Fragment>
     );
   }
+}
+
+function RenderTableRows(props) {
+  let tableRows = [];
+  for (let i = 0; i < props.contents.length; i++) {
+    tableRows.push(<RenderSingleRow entry={props.contents[i]}/>);
+  }
+  return (
+    <table class="table table-borderless">
+      <tbody>
+        {tableRows}
+      </tbody>
+    </table>
+  )
+}
+
+function RenderSingleRow(props) {
+  let parser = new DOMParser();
+  let lookupData = parser.parseFromString(props.entry.body, "text/html");
+
+  return ( 
+    <tr>
+      <td>{props.entry.title}</td>
+      <td dangerouslySetInnerHTML={{__html: lookupData.documentElement.innerText}} />
+      {/* <td>{<ParseHTML text={props.entry.body}/>}</td> */}
+    </tr>
+  );
+}
+
+function ParseHTML(props) {
+  //Convert the html body into an actual element
+  let parser = new DOMParser();
+  let lookupData = parser.parseFromString(props.text, "text/html");
+
+  // let t = document.createElement('template');
+  // t.innerHTML = lookupData.documentElement.innerText;
+  // return t.content.cloneNode(true);
+  return lookupData.documentElement.innerText;
+
 }
 
 export default Lookup
